@@ -23,6 +23,8 @@ void *serial_dot_product(void *arg) {
    pthread_mutex_lock(dot_data->mutex);
    *(dot_data->global_dot_prod) += dot_data->my_dot_prod;
    pthread_mutex_unlock(dot_data->mutex);
+     printf("Yes, this is in side serial_dot_product\n");
+
    pthread_exit(NULL);
 }
 
@@ -38,6 +40,7 @@ int main()
    int vec_len;
    int subvec_len;
    int i;
+
    
    printf("Number of processors = ");
     if(scanf("%d", &num_of_thrds) < 1 || num_of_thrds > MAXTHRDS){
@@ -72,6 +75,7 @@ int main()
      (i==num_of_thrds-1)?vec_len-(num_of_thrds-1)*subvec_len:subvec_len;
       pthread_create(&working_thread[i], NULL, serial_dot_product,(void*)&thrd_dot_prod_data[i]);
    }
+
    for(i=0; i<num_of_thrds; i++)
      pthread_join(working_thread[i], &status);
    printf("Dot product = %f\n", dot_prod);
