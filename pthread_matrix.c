@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <cblas.h>
 #include <pthread.h>
+#include <math.h>
+#include "io.c"
 
 
 #define MAXTHRDS 124
@@ -42,21 +45,21 @@ void *matrix_one_norm(void *arg)
     norm_data->my_one_norm += abs(*(*(norm_data->matrix)+i*(norm_data->my_matrix_col_len)+ norm_data->my_start_column+col));
     //printf("Norm%f\n",norm_data->my_one_norm);
     }
-    printf("my_max_norm= %f, my_one_norm= %f\n", (norm_data->my_max_norm),norm_data->my_one_norm);
+    //printf("my_max_norm= %f, my_one_norm= %f\n", (norm_data->my_max_norm),norm_data->my_one_norm);
     if(norm_data->my_one_norm > norm_data->my_max_norm)
     {
       norm_data->my_max_norm = norm_data->my_one_norm;
     }
   }
   
-  printf("global_one_norm= %f, my_max_norm= %f\n", *(norm_data->global_one_norm),norm_data->my_max_norm);
+  //printf("global_one_norm= %f, my_max_norm= %f\n", *(norm_data->global_one_norm),norm_data->my_max_norm);
 
   // update global
   pthread_mutex_lock(norm_data->mutex);
   if(*(norm_data->global_one_norm) < norm_data->my_one_norm)
     *(norm_data->global_one_norm) = norm_data->my_max_norm;
-
   pthread_mutex_unlock(norm_data->mutex);
+  pthread_exit(NULL);
 }
 
 void *matrix_multip(void *arg)
@@ -127,7 +130,7 @@ int main()
 	int num_of_thrds;
 	int matrix_size;
 	int submatrix_size;
-	int i,j,n;
+	int i,j,n,x;
   time_t t;   
    /* Intializes random number generator */
   srand((unsigned) time(&t));
@@ -136,22 +139,32 @@ int main()
   matrix_one_norm_t *thrd_matrix_one_norm_data;
   pthread_mutex_t *mutex_max_one_norm;
 
-	  printf("Number of processors = ");
-    if(scanf("%d", &num_of_thrds) < 1 || num_of_thrds > MAXTHRDS){
-      printf("Check input for number of processors. Bye.\n");
-      return -1;
-    }
+  struct timeval tv1, tv2;
+  struct timezone tz;
+  char fileName[50] = "out_pthread_matrix_size_16_to_1024.csv";
 
-    printf("Matrix size = ");
-    if(scanf("%d", &matrix_size)<1 || matrix_size%num_of_thrds != 0){
-      printf("Check input for Matrix size. Bye.\n");
-      return -1;
-    }
-    printf("After user input");
+	  // printf("Number of processors = ");
+   //  if(scanf("%d", &num_of_thrds) < 1 || num_of_thrds > MAXTHRDS){
+   //    printf("Check input for number of processors. Bye.\n");
+   //    return -1;
+   //  }
+
+   //  printf("Matrix size = ");
+   //  if(scanf("%d", &matrix_size)<1 || matrix_size%num_of_thrds != 0){
+   //    printf("Check input for Matrix size. Bye.\n");
+   //    return -1;
+   //  }
+   //  printf("After user input");
+    
+
+    deleteOutputFile(fileName);
+    //================================================
+    for(x=4; x<15; x++)
+    {
+      num_of_thrds= 16;
+      matrix_size = pow(2,x);
+    
     n = matrix_size;
-
-
-
     submatrix_size = matrix_size/num_of_thrds;
     printf("There will be %d threads multiple two size %d matrix.\n The sub matrix size is %d * %d\n", num_of_thrds, n,submatrix_size,n);
 
@@ -223,8 +236,8 @@ int main()
      {
       A[i][j] = i+j;
       B[i][j] = i+j+10;
-      printf("Value of A[%d][%d] %f\n",i,j,A[i][j]);
-      printf("Value of B[%d][%d] %f\n",i,j,B[i][j]);
+      // printf("Value of A[%d][%d] %f\n",i,j,A[i][j]);
+      // printf("Value of B[%d][%d] %f\n",i,j,B[i][j]);
      }
    }
 
@@ -232,6 +245,7 @@ int main()
    working_thread = malloc(num_of_thrds*sizeof(pthread_t));
    thrd_matrix_multip_data = malloc(num_of_thrds*sizeof(matrix_multip_t));
 
+   gettimeofday(&tv1, &tz); 
    for(i=0; i<num_of_thrds; i++)
    {
     //printf("Value of A[%d] %f\n",0,**(A+submatrix_size * i));
@@ -253,22 +267,22 @@ int main()
     
     pthread_create(&working_thread[i], NULL, matrix_multip,(void*)&thrd_matrix_multip_data[i]);
    }
+
    for(i=0; i<num_of_thrds; i++)
      pthread_join(working_thread[i], &status);
    printf("Done...\n");
 
-   for(i = 0; i < n; i++) 
-        for( j = 0; j < n; j++)
-            {
-              printf("global_matrix[%d][%d]= %f\n",
-                i,j,C[i][j]);
-              //matrix_data->my_matrix[i][j] +=  matrix_data->matrix_a[i][r] * matrix_data->matrix_b[r][j];
-            }
+   // for(i = 0; i < n; i++) 
+   //      for( j = 0; j < n; j++)
+   //          {
+   //            printf("global_matrix[%d][%d]= %f\n",
+   //              i,j,C[i][j]);
+   //            //matrix_data->my_matrix[i][j] +=  matrix_data->matrix_a[i][r] * matrix_data->matrix_b[r][j];
+   //          }
    
    
    free(working_thread);
    free(thrd_matrix_multip_data);
-
    
 
    working_thread = malloc(num_of_thrds*sizeof(pthread_t));
@@ -276,7 +290,6 @@ int main()
 
    mutex_max_one_norm = malloc(sizeof(pthread_mutex_t));
    pthread_mutex_init(mutex_max_one_norm, NULL);
-
 
 
    for(i=0; i<num_of_thrds; i++)
@@ -294,13 +307,22 @@ int main()
 
   for(i=0; i<num_of_thrds; i++)
      pthread_join(working_thread[i], &status);
+   gettimeofday(&tv2, &tz);
    printf("Max one norm = %f\n", one_norm);
 
+   double elapsed = (double) (tv2.tv_sec-tv1.tv_sec) + (double) (tv2.tv_usec-tv1.tv_usec) * 1.e-6;
+   printf("Multiply and calculate norm takes %lf sec\n", elapsed);
+   WriteData(fileName, matrix_size, elapsed);
+
+
 free(A);
-   free(B);
+free(B);
 free(C);
 pthread_mutex_destroy(mutex_max_one_norm);
 free(mutex_max_one_norm);
+
+}
+
 
    printf("System exit. \n");
    exit(0);
