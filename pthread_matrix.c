@@ -17,9 +17,11 @@ int my_matrix_col_len;
 } matrix_multip_t;
 
 typedef struct {
-int my_column;
+int my_start_column;
+int my_end_column;
 int my_matrix_col_len;
 double my_one_norm;
+double my_max_norm;
 double **matrix;
 double *global_one_norm;
 pthread_mutex_t *mutex;
@@ -27,23 +29,32 @@ pthread_mutex_t *mutex;
 
 void *matrix_one_norm(void *arg)
 {
-  int i;
+  int i,col;
+  double a_col_norm;
   matrix_one_norm_t *norm_data;
   norm_data = arg;
-  for(i = 0; i < norm_data->my_matrix_col_len; i++) 
+  for(col = 0; col <= norm_data->my_end_column - norm_data->my_start_column;col++)
   {
+    for(i = 0; i < norm_data->my_matrix_col_len; i++) 
+    {
     //printf("This is the number we want to added to my one norm %f\n",**(norm_data->matrix+ 1*(norm_data->my_matrix_col_len)+ norm_data->my_column));
     //printf("i*norm_data->my_matrix_col_len\n",i*(norm_data->my_matrix_col_len));
-
-    norm_data->my_one_norm += abs(*(*(norm_data->matrix)+i*(norm_data->my_matrix_col_len)+ norm_data->my_column ));
+    norm_data->my_one_norm += abs(*(*(norm_data->matrix)+i*(norm_data->my_matrix_col_len)+ norm_data->my_start_column+col));
     //printf("Norm%f\n",norm_data->my_one_norm);
+    }
+    printf("my_max_norm= %f, my_one_norm= %f\n", (norm_data->my_max_norm),norm_data->my_one_norm);
+    if(norm_data->my_one_norm > norm_data->my_max_norm)
+    {
+      norm_data->my_max_norm = norm_data->my_one_norm;
+    }
   }
-  printf("global_one_norm= %f, my_one_norm= %f\n", *(norm_data->global_one_norm),norm_data->my_one_norm);
+  
+  printf("global_one_norm= %f, my_max_norm= %f\n", *(norm_data->global_one_norm),norm_data->my_max_norm);
 
   // update global
   pthread_mutex_lock(norm_data->mutex);
   if(*(norm_data->global_one_norm) < norm_data->my_one_norm)
-    *(norm_data->global_one_norm) = norm_data->my_one_norm;
+    *(norm_data->global_one_norm) = norm_data->my_max_norm;
 
   pthread_mutex_unlock(norm_data->mutex);
 }
@@ -53,15 +64,13 @@ void *matrix_multip(void *arg)
   int i,j,r,n;
   matrix_multip_t *matrix_data;
   matrix_data = arg;
-  printf("Before dgenmm\n");
-
   //printf("Value of matrix_a[0][0] %f\n",(matrix_data->matrix_a[0][0]));
   n = matrix_data->my_matrix_col_len;
 
   cblas_dgemm( CblasRowMajor,
                 CblasNoTrans, 
                 CblasNoTrans, 
-                1, matrix_data->my_matrix_col_len, matrix_data->my_matrix_col_len, 1.0,
+                matrix_data->my_end_row - matrix_data->my_start_row+1, matrix_data->my_matrix_col_len, matrix_data->my_matrix_col_len, 1.0,
                 (matrix_data->matrix_a[0]), matrix_data->my_matrix_col_len, 
                 (matrix_data->matrix_b[0]), matrix_data->my_matrix_col_len, 
                 1.0, *matrix_data->global_matrix + matrix_data->my_start_row*n, 
@@ -83,7 +92,6 @@ void *matrix_multip(void *arg)
   //               i,j,matrix_data->matrix_b[i][j]);
   //             //matrix_data->my_matrix[i][j] +=  matrix_data->matrix_a[i][r] * matrix_data->matrix_b[r][j];
   //           }
-  printf("After dgenmm\n");
   pthread_exit(NULL);
 }
 
@@ -245,20 +253,17 @@ int main()
     
     pthread_create(&working_thread[i], NULL, matrix_multip,(void*)&thrd_matrix_multip_data[i]);
    }
-   printf("This is before pthread_join\n");
-
    for(i=0; i<num_of_thrds; i++)
      pthread_join(working_thread[i], &status);
-
    printf("Done...\n");
-   for(i = 0; i < 2; i++) 
+
+   for(i = 0; i < n; i++) 
         for( j = 0; j < n; j++)
             {
               printf("global_matrix[%d][%d]= %f\n",
                 i,j,C[i][j]);
               //matrix_data->my_matrix[i][j] +=  matrix_data->matrix_a[i][r] * matrix_data->matrix_b[r][j];
             }
-
    
    
    free(working_thread);
@@ -276,25 +281,17 @@ int main()
 
    for(i=0; i<num_of_thrds; i++)
    {
-    thrd_matrix_one_norm_data[i].my_column =  i;
+    thrd_matrix_one_norm_data[i].my_start_column =  submatrix_size * i;
+    thrd_matrix_one_norm_data[i].my_end_column =  submatrix_size * i +submatrix_size -1;
     thrd_matrix_one_norm_data[i].my_matrix_col_len =  n;
     thrd_matrix_one_norm_data[i].my_one_norm = 0;
+    thrd_matrix_one_norm_data[i].my_max_norm = 0;
     thrd_matrix_one_norm_data[i].matrix =  C;
     thrd_matrix_one_norm_data[i].mutex =  mutex_max_one_norm;
     thrd_matrix_one_norm_data[i].global_one_norm = &one_norm;
     pthread_create(&working_thread[i], NULL, matrix_one_norm,(void*)&thrd_matrix_one_norm_data[i]);
-
-
-      printf("my_column=%d,my_matrix_col_len=%d\n",thrd_matrix_one_norm_data[i].my_column,thrd_matrix_one_norm_data[i].my_matrix_col_len);
-
    }
-for(i = 0; i < 2; i++) 
-     for(j = 0; j < 2; j++) 
-            {
-              printf("matrix+%d= %f\n",i,*(*C+i*2+j));
-              //matrix_data->my_matrix[i][j] +=  matrix_data->matrix_a[i][r] * matrix_data->matrix_b[r][j];
-            }
-printf("This is the problem. \n");
+
   for(i=0; i<num_of_thrds; i++)
      pthread_join(working_thread[i], &status);
    printf("Max one norm = %f\n", one_norm);
