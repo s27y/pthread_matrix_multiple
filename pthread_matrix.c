@@ -35,7 +35,7 @@ void *matrix_one_norm(void *arg)
     //printf("This is the number we want to added to my one norm %f\n",**(norm_data->matrix+ 1*(norm_data->my_matrix_col_len)+ norm_data->my_column));
     //printf("i*norm_data->my_matrix_col_len\n",i*(norm_data->my_matrix_col_len));
 
-    norm_data->my_one_norm += *(*(norm_data->matrix)+i*(norm_data->my_matrix_col_len)+ norm_data->my_column );
+    norm_data->my_one_norm += abs(*(*(norm_data->matrix)+i*(norm_data->my_matrix_col_len)+ norm_data->my_column ));
     //printf("Norm%f\n",norm_data->my_one_norm);
   }
   printf("global_one_norm= %f, my_one_norm= %f\n", *(norm_data->global_one_norm),norm_data->my_one_norm);
