@@ -27,7 +27,6 @@ pthread_mutex_t *mutex;
 
 void *matrix_one_norm(void *arg)
 {
-  printf("Enter one norm function");
   int i;
   matrix_one_norm_t *norm_data;
   norm_data = arg;
@@ -37,14 +36,16 @@ void *matrix_one_norm(void *arg)
     //printf("i*norm_data->my_matrix_col_len\n",i*(norm_data->my_matrix_col_len));
 
     norm_data->my_one_norm += *(*(norm_data->matrix)+i*(norm_data->my_matrix_col_len)+ norm_data->my_column );
-    printf("Now%f\n",norm_data->my_one_norm);
+    //printf("Norm%f\n",norm_data->my_one_norm);
   }
+  printf("global_one_norm= %f, my_one_norm= %f\n", *(norm_data->global_one_norm),norm_data->my_one_norm);
 
-  // // update global
-  // pthread_mutex_lock(norm_data->mutex);
-  // if(*(norm_data->global_one_norm) < norm_data->my_one_norm)
-  //  *(norm_data->global_one_norm) = norm_data->my_one_norm;
-  // pthread_mutex_unlock(norm_data->mutex);
+  // update global
+  pthread_mutex_lock(norm_data->mutex);
+  if(*(norm_data->global_one_norm) < norm_data->my_one_norm)
+    *(norm_data->global_one_norm) = norm_data->my_one_norm;
+
+  pthread_mutex_unlock(norm_data->mutex);
 }
 
 void *matrix_multip(void *arg)
@@ -279,6 +280,7 @@ int main()
     thrd_matrix_one_norm_data[i].my_matrix_col_len =  n;
     thrd_matrix_one_norm_data[i].my_one_norm = 0;
     thrd_matrix_one_norm_data[i].matrix =  C;
+    thrd_matrix_one_norm_data[i].mutex =  mutex_max_one_norm;
     thrd_matrix_one_norm_data[i].global_one_norm = &one_norm;
     pthread_create(&working_thread[i], NULL, matrix_one_norm,(void*)&thrd_matrix_one_norm_data[i]);
 
