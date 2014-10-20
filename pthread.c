@@ -20,9 +20,11 @@ void *serial_dot_product(void *arg) {
    dot_data = arg;
    for(i=0; i<dot_data->my_vec_len; i++)
        dot_data->my_dot_prod += dot_data->my_x[i]*dot_data->my_y[i];
+
    pthread_mutex_lock(dot_data->mutex);
    *(dot_data->global_dot_prod) += dot_data->my_dot_prod;
    pthread_mutex_unlock(dot_data->mutex);
+   
      printf("Yes, this is in side serial_dot_product\n");
 
    pthread_exit(NULL);

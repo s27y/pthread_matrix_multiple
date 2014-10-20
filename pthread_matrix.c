@@ -16,6 +16,18 @@ double **global_matrix;
 int my_matrix_col_len;
 } matrix_multip_t;
 
+typedef struct {
+double *my_column;
+double **matrix;
+double *global_one_norm;
+pthread_mutex_t *mutex;
+} matrix_one_norm_t;
+
+void *matrix_one_norm(void *arg)
+{
+  
+}
+
 void *matrix_multip(void *arg)
 {
   int i,j,r,n;
@@ -56,6 +68,8 @@ n = matrix_data->my_matrix_col_len;
   printf("After dgenmm\n");
   pthread_exit(NULL);
 }
+
+
 
 
 
