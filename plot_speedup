@@ -1,0 +1,12 @@
+set datafile separator ","
+set title "The speedup of the pthread(16 thread) over the serial"
+set xlabel "Matrix size"
+set ylabel "Speed up"
+#set legend position
+set key left box
+set xrange [0:2048]
+
+
+plot "out_speedup.csv" using 1:($3/$2) title 'speedup' with lines
+#it will close immediately without pause
+pause -1

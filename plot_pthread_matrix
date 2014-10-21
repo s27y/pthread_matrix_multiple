@@ -1,0 +1,10 @@
+set datafile separator ","
+set title "Execution time of pthread matrix multiple and norm(16 thread)"
+set xlabel "Matrix size"
+#set legend position
+set key left box
+
+
+plot "out_pthread_matrix_size_16_to_1024.csv" using 1:2 title '' with lines
+#it will close immediately without pause
+pause -1

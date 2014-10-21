@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cblas.h>
 #include <sys/time.h>
 #include <math.h>
 #include "io.c"
@@ -9,23 +10,35 @@ double Multiply(int n, double** a, double** b, double** c)
      int i=0;
      int j=0;
      int r=0;
+     double single_row_total =0;
+     double my_max=0;
   
      struct timeval tv1, tv2;
      struct timezone tz;
 
-    
       gettimeofday(&tv1, &tz);	
-     for(i = 0; i < n; i++) 
-        for( j = 0; j < n; j++)
-            for( r = 0; r < n; r++) 
-				c[i][j] +=  a[i][r] * b[r][j];
+     cblas_dgemm( CblasRowMajor,  CblasTrans, CblasNoTrans, n, n, n,
+                   1.0, a[0], n, a[0], n, 1.0, c[0], n );
+      for(i = 0; i<n ;i++)
+      {
+        for(j=0;j<n; j++)
+        {
+          single_row_total += c[i][j];
+        }
+        if(single_row_total>my_max)
+          my_max = single_row_total;
+        single_row_total=0;
+      }
 
 gettimeofday(&tv2, &tz);
+
 //printf(" at <%ld.%06ld>\n", (long int)(tv2.tv_sec), (long int)(tv2.tv_usec));
 
 double elapsed = (double) (tv2.tv_sec-tv1.tv_sec) + (double) (tv2.tv_usec-tv1.tv_usec) * 1.e-6;
 
 printf("Multiply taks %lf sec\n", elapsed);
+          printf("Max norm: %f\n", my_max);
+
 
 return elapsed;
 }
@@ -34,19 +47,19 @@ return elapsed;
 
 int main(void)
 {
-  char file_name[25]="out.csv";
+  char file_name[40]="out_serial_matrix_one_norm.csv";
    deleteOutputFile(file_name);
    int x;
    int n;
    FILE *ofp;
 
-   for(x=0;x<12;x++)
+   for(x=0;x<15;x++)
    {
    n = pow(2, x);
    double** A;
    double** B;
    double** C; 
-   int numreps = 5;
+   int numreps = 2;
    
    int i=0;
    int j=0;
@@ -129,8 +142,8 @@ int main(void)
    {
 		for(j=0; j<n; j++)
 	   {
-		  A[i][j] = 1;
-		  B[i][j] = 2;
+		  A[i][j] = i+j;
+		  B[i][j] = i+j;
 	   }
    }
 
@@ -144,7 +157,7 @@ int main(void)
    average = sumTime/numreps;
   printf("Done ...\n");
 sumTime=0;
-  WriteData(file_name,ofp, n, average);
+  WriteData(file_name, n, average);
    
     //deallocate memory
    free(A[0]);

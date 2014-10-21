@@ -1,0 +1,11 @@
+set datafile separator ","
+set title "Execution time of pthread matrix multiple and norm(1024 matrix size)"
+set xlabel "Number of thread"
+#set legend position
+set key left box
+set xrange [0:128]
+
+
+plot "out_pthread_thread_1_to_128.csv" using 1:2 title '' with lines
+#it will close immediately without pause
+pause -1
